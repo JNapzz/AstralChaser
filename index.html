@@ -10,6 +10,7 @@
   <h1>Astral Chaser: Match-3 Demo</h1>
   <div class="info">Swap adjacent gems (including diagonally) to match 3 or more of the same color! (Diagonal matches included)</div>
   <div id="score">Score: 0</div>
+  <div id="timer">Time: 10.0</div>
   <div id="board"></div>
   <button id="resetBtn">Reset Board</button>
   <script>
@@ -29,10 +30,88 @@
     let selected = null; // {row, col}
     let animating = false; // Prevent input during animation
 
+    // --- TIMER STATE (COUNTDOWN) ---
+    const TIMER_START = 10000; // 10 seconds in ms
+    let timerInterval = null;
+    let timerPaused = false;
+    let timeLeft = TIMER_START; // ms
+    let lastTick = null;
+    let gameOver = false;
     // --- DOM ELEMENTS ---
     const boardDiv = document.getElementById('board');
     const scoreDiv = document.getElementById('score');
+    const timerDiv = document.getElementById('timer');
     const resetBtn = document.getElementById('resetBtn');
+
+    // --- TIMER FUNCTIONS ---
+    function formatTime(ms) {
+      const sec = Math.floor(ms / 1000);
+      const tenths = Math.floor((ms % 1000) / 100);
+      return `${sec}.${tenths}`;
+    }
+
+    function updateTimerDisplay() {
+      timerDiv.textContent = "Time: " + formatTime(Math.max(timeLeft, 0));
+    }
+
+    function startTimer() {
+      if (timerInterval) return;
+      timerPaused = false;
+      lastTick = Date.now();
+      timerInterval = setInterval(() => {
+        if (!timerPaused && !gameOver) {
+          const now = Date.now();
+          const dt = now - lastTick;
+          lastTick = now;
+          timeLeft -= dt;
+          if (timeLeft <= 0) {
+            timeLeft = 0;
+            updateTimerDisplay();
+            stopTimer();
+            handleGameOver();
+            return;
+          }
+          updateTimerDisplay();
+        }
+      }, 100);
+    }
+
+    function stopTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    function pauseTimer() {
+      if (!timerPaused && !gameOver) {
+        timerPaused = true;
+        // Adjust timeLeft for time spent since lastTick
+        const now = Date.now();
+        timeLeft -= Math.max(0, now - lastTick);
+        updateTimerDisplay();
+      }
+    }
+
+    function resumeTimer() {
+      if (timerPaused && !gameOver) {
+        timerPaused = false;
+        lastTick = Date.now();
+      }
+    }
+
+    function resetTimer() {
+      stopTimer();
+      timeLeft = TIMER_START;
+      timerPaused = false;
+      gameOver = false;
+      updateTimerDisplay();
+    }
+
+    function handleGameOver() {
+      gameOver = true;
+      animating = true;
+      timerDiv.textContent = "Time: 0.0 (Game Over)";
+      // Optionally, you can disable board input here.
+    }
 
     // --- FUNCTIONS ---
     function randomGem() {
@@ -60,8 +139,12 @@
       }
       score = 0;
       selected = null;
+      animating = false;
+      gameOver = false;
       updateBoard();
       updateScore();
+      resetTimer();
+      startTimer();
     }
 
     function updateBoard() {
@@ -77,6 +160,7 @@
           if (selected && selected.row === r && selected.col === c)
             gemDiv.classList.add('selected');
           gemDiv.onclick = () => selectGem(r, c);
+          if (gameOver) gemDiv.style.pointerEvents = "none";
           boardDiv.appendChild(gemDiv);
         }
       }
@@ -87,7 +171,7 @@
     }
 
     function selectGem(r, c) {
-      if (animating) return;
+      if (animating || gameOver) return;
       if (!selected) {
         selected = {row: r, col: c};
         updateBoard();
@@ -205,6 +289,8 @@
     }
 
     function resolveMatches(matches) {
+      // Pause timer while animating
+      pauseTimer();
       animating = true;
       // Build a mask of matched cells
       let matched = Array.from({length: size}, () => Array(size).fill(false));
@@ -245,6 +331,8 @@
             resolveMatches(newMatches);
           } else {
             animating = false;
+            // Resume timer after all matches have resolved
+            resumeTimer();
           }
         }, 200);
       }, 300);
