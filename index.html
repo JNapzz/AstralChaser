@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Astral Chaser - Match 3 Demo (Diagonal Swap & Match)</title>
+  <style>
+    body {
+      background: #121730;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      min-height: 100vh;
+    }
+    h1 {
+      font-family: 'Orbitron', Arial, sans-serif;
+      letter-spacing: 2px;
+      margin-top: 30px;
+    }
+    #score {
+      font-size: 1.2em;
+      margin: 10px 0 20px 0;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 40px);
+      grid-template-rows: repeat(8, 40px);
+      gap: 3px;
+      margin-bottom: 20px;
+      border: 3px solid #3a3f5c;
+      background: #22243a;
+      box-shadow: 0 0 20px 2px #00bcd480;
+    }
+    .gem {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid #fff2;
+      box-shadow: 0 2px 8px #0003;
+      cursor: pointer;
+      transition: filter 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1em;
+      user-select: none;
+    }
+    .gem.selected {
+      filter: brightness(1.5) drop-shadow(0 0 6px #fff8);
+      border: 3px solid #fff8;
+      z-index: 2;
+    }
+    .info {
+      margin-bottom: 10px;
+      font-size: 1em;
+      color: #cddcfa;
+    }
+    #resetBtn {
+      background: #363d7e;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px #0003;
+      transition: background 0.2s;
+    }
+    #resetBtn:hover {
+      background: #4c57b6;
+    }
+  </style>
+</head>
+<body>
+  <h1>Astral Chaser: Match-3 Demo</h1>
+  <div class="info">Swap adjacent gems (including diagonally) to match 3 or more of the same color! (Diagonal matches included)</div>
+  <div id="score">Score: 0</div>
+  <div id="board"></div>
+  <button id="resetBtn">Reset Board</button>
+  <script>
+    // --- GAME SETTINGS ---
+    const size = 8; // 8x8 board
+    const colors = [
+      {name: "Yellow", code: "#FFEB3B"},
+      {name: "Red", code: "#E53935"},
+      {name: "Green", code: "#43A047"},
+      {name: "Blue", code: "#1E88E5"},
+      {name: "Purple", code: "#9C27B0"}
+    ];
+
+    // --- GAME STATE ---
+    let board = [];
+    let score = 0;
+    let selected = null; // {row, col}
+    let animating = false; // Prevent input during animation
+
+    // --- DOM ELEMENTS ---
+    const boardDiv = document.getElementById('board');
+    const scoreDiv = document.getElementById('score');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // --- FUNCTIONS ---
+    function randomGem() {
+      return Math.floor(Math.random() * colors.length);
+    }
+
+    function initBoard() {
+      board = [];
+      for (let r = 0; r < size; r++) {
+        const row = [];
+        for (let c = 0; c < size; c++) {
+          let gem;
+          do {
+            gem = randomGem();
+            row[c] = gem;
+          } while (
+            (c >= 2 && row[c-1] === gem && row[c-2] === gem) ||
+            (r >= 2 && board[r-1][c] === gem && board[r-2][c] === gem) ||
+            // Avoid starting diagonal matches too
+            (r >= 2 && c >= 2 && board[r-1][c-1] === gem && board[r-2][c-2] === gem) ||
+            (r >= 2 && c <= size-3 && board[r-1][c+1] === gem && board[r-2][c+2] === gem)
+          );
+        }
+        board.push(row);
+      }
+      score = 0;
+      selected = null;
+      updateBoard();
+      updateScore();
+    }
+
+    function updateBoard() {
+      boardDiv.innerHTML = "";
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const gemDiv = document.createElement('div');
+          gemDiv.className = 'gem';
+          gemDiv.style.background = colors[board[r][c]].code;
+          gemDiv.title = colors[board[r][c]].name;
+          gemDiv.dataset.row = r;
+          gemDiv.dataset.col = c;
+          if (selected && selected.row === r && selected.col === c)
+            gemDiv.classList.add('selected');
+          gemDiv.onclick = () => selectGem(r, c);
+          boardDiv.appendChild(gemDiv);
+        }
+      }
+    }
+
+    function updateScore() {
+      scoreDiv.textContent = `Score: ${score}`;
+    }
+
+    function selectGem(r, c) {
+      if (animating) return;
+      if (!selected) {
+        selected = {row: r, col: c};
+        updateBoard();
+        return;
+      }
+      if (selected.row === r && selected.col === c) {
+        selected = null;
+        updateBoard();
+        return;
+      }
+      // Allow adjacent (including diagonals!) swaps
+      const dr = Math.abs(selected.row - r);
+      const dc = Math.abs(selected.col - c);
+      if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1) || (dr === 1 && dc === 1)) {
+        swapGems(selected.row, selected.col, r, c, true);
+      } else {
+        selected = {row: r, col: c};
+        updateBoard();
+      }
+    }
+
+    function swapGems(r1, c1, r2, c2, checkMatch) {
+      [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
+      updateBoard();
+      if (checkMatch) {
+        let matches = findMatches();
+        if (matches.length === 0) {
+          // Swap back if no match
+          setTimeout(() => {
+            swapGems(r1, c1, r2, c2, false);
+            selected = null;
+            updateBoard();
+          }, 300);
+        } else {
+          selected = null;
+          resolveMatches(matches);
+        }
+      }
+    }
+
+    // Find all matches: horizontal, vertical, and diagonal
+    function findMatches() {
+      let matches = [];
+      // Horizontal matches
+      for (let r = 0; r < size; r++) {
+        let run = 1;
+        for (let c = 1; c < size; c++) {
+          if (board[r][c] === board[r][c-1]) {
+            run++;
+          } else {
+            if (run >= 3) matches.push({row: r, col: c-run, len: run, dir: 'horiz'});
+            run = 1;
+          }
+        }
+        if (run >= 3) matches.push({row: r, col: size-run, len: run, dir: 'horiz'});
+      }
+
+      // Vertical matches
+      for (let c = 0; c < size; c++) {
+        let run = 1;
+        for (let r = 1; r < size; r++) {
+          if (board[r][c] === board[r-1][c]) {
+            run++;
+          } else {
+            if (run >= 3) matches.push({row: r-run, col: c, len: run, dir: 'vert'});
+            run = 1;
+          }
+        }
+        if (run >= 3) matches.push({row: size-run, col: c, len: run, dir: 'vert'});
+      }
+
+      // Diagonal matches: top-left to bottom-right
+      for (let r = 0; r < size-2; r++) {
+        for (let c = 0; c < size-2; c++) {
+          let gem = board[r][c];
+          if (gem === board[r+1][c+1] && gem === board[r+2][c+2]) {
+            let len = 3;
+            while (r+len < size && c+len < size && board[r+len][c+len] === gem) len++;
+            matches.push({row: r, col: c, len: len, dir: 'diag1'});
+          }
+        }
+      }
+      // Diagonal matches: bottom-left to top-right
+      for (let r = 2; r < size; r++) {
+        for (let c = 0; c < size-2; c++) {
+          let gem = board[r][c];
+          if (gem === board[r-1][c+1] && gem === board[r-2][c+2]) {
+            let len = 3;
+            while (r-len >= 0 && c+len < size && board[r-len][c+len] === gem) len++;
+            matches.push({row: r, col: c, len: len, dir: 'diag2'});
+          }
+        }
+      }
+
+      // Filter duplicates (if a match covers cells already in another match)
+      // We'll merge all matches into a mask for removal.
+      let mask = Array.from({length: size}, () => Array(size).fill(false));
+      for (const m of matches) {
+        for (let k = 0; k < m.len; k++) {
+          if (m.dir === 'horiz') mask[m.row][m.col + k] = true;
+          else if (m.dir === 'vert') mask[m.row + k][m.col] = true;
+          else if (m.dir === 'diag1') mask[m.row + k][m.col + k] = true;
+          else if (m.dir === 'diag2') mask[m.row - k][m.col + k] = true;
+        }
+      }
+      // Rebuild matches array to only include unique matched cells
+      let finalMatches = [];
+      for (let r = 0; r < size; r++)
+        for (let c = 0; c < size; c++)
+          if (mask[r][c]) finalMatches.push({row: r, col: c});
+      // If no matches, return []
+      if (finalMatches.length === 0) return [];
+      // To work with resolveMatches, we build a pseudo-match array
+      return [{cells: finalMatches}];
+    }
+
+    function resolveMatches(matches) {
+      animating = true;
+      // Build a mask of matched cells
+      let matched = Array.from({length: size}, () => Array(size).fill(false));
+      if (matches.length && matches[0].cells) {
+        for (const cell of matches[0].cells) {
+          matched[cell.row][cell.col] = true;
+        }
+      }
+      // Animate matched gems (fade out)
+      Array.from(boardDiv.children).forEach((div, i) => {
+        let r = Math.floor(i/size), c = i%size;
+        if (matched[r][c]) div.style.filter = 'brightness(3) grayscale(0.8)';
+      });
+      setTimeout(() => {
+        // Remove matched gems and drop others down
+        for (let c = 0; c < size; c++) {
+          let newCol = [];
+          for (let r = size-1; r >= 0; r--) {
+            if (!matched[r][c]) newCol.push(board[r][c]);
+          }
+          while (newCol.length < size) newCol.push(randomGem());
+          for (let r = size-1; r >= 0; r--) {
+            board[r][c] = newCol[size-1 - r];
+          }
+        }
+        // Score update: 10 points per removed gem
+        let removed = 0;
+        for (let r = 0; r < size; r++)
+          for (let c = 0; c < size; c++)
+            if (matched[r][c]) removed++;
+        score += removed * 10;
+        updateScore();
+        updateBoard();
+        // Check for new matches (cascade)
+        setTimeout(() => {
+          let newMatches = findMatches();
+          if (newMatches.length > 0) {
+            resolveMatches(newMatches);
+          } else {
+            animating = false;
+          }
+        }, 200);
+      }, 300);
+    }
+
+    // --- INIT ---
+    resetBtn.onclick = initBoard;
+    initBoard();
+  </script>
+</body>
+</html>
