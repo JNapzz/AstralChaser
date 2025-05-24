@@ -1,0 +1,156 @@
+# Astral Chaser: Match 3 RPG  
+## Core Overview  
+Astral Chaser is a match-3 puzzle RPG that combines strategic team-building with the thrill of collecting diverse heroes and creatures. Players assemble teams from various Factions and Battle Types, each with unique rarities, skills, and stats.
+
+---
+
+## Rarity System
+
+- **Normal:** Decent stats, strong abilities for stable, diverse builds.
+- **Rare:** Great stats, good abilities for more variety.
+- **Super Rare:** High base stats, expand build diversity.
+- **Ultra Rare:** Second highest stats, powerful, often faction counterpoints to Legendary.
+- **Legendary:** Highest stats, unique skills, pinnacle of team-building.
+
+---
+
+## Factions
+
+| Faction Name                | Theme/Ability                                                                                                    | Stat Tuning                                                 |
+|-----------------------------|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| Tricked Gods                | "Gem Rush" - Spawns extra gems after matches.                                                                   | Less Attack, Higher Combos, Less Defense/HP (Yellow)        |
+| Doomfists                   | Pre-match attack dealing set damage.                                                                             | Higher Attack/Defense, Less HP (Red)                        |
+| Nightmares of the Deceased  | Passively generate gems; activate for huge one-turn bonus.                                                       | Less Attack, More HP/Defense (Green)                        |
+| Legion of Extinction        | Skill boosts attack for all same color/type; extra combo damage.                                                 | Higher Attack, Less HP/Defense (Blue)                       |
+| Angelic Privilege           | Use battle skills on turn 1 (no match needed), but lower Attack, higher HP.                                      | Lower Attack, Higher HP (White/Light)                       |
+| Ghosts of the Mislead       | (You can define their unique mechanic)                                                                           | TBD                                                         |
+| Prophets of the Righteous   | (You can define their unique mechanic)                                                                           | TBD                                                         |
+| Goldenblades                | (You can define their unique mechanic)                                                                           | TBD                                                         |
+| Froststriders               | (You can define their unique mechanic)                                                                           | TBD                                                         |
+| Steelclouds                 | (You can define their unique mechanic)                                                                           | TBD                                                         |
+| Firethorn                   | (You can define their unique mechanic)                                                                           | TBD                                                         |
+| Brightstriders              | (You can define their unique mechanic)                                                                           | TBD                                                         |
+| Waterclouds                 | (You can define their unique mechanic)                                                                           | TBD                                                         |
+
+*Feel free to expand on the factions with more unique skills and lore!*
+
+---
+
+## Battle Types
+
+- **Gods & Goddesses** (Legendary): Highest stats, top tier
+- **Devils & Demons** (Ultra Rare): Second highest, rival gods
+- **Aliens/Space-Beasts/Robots** (Super Rare): High stats
+- **Dragons/Ghosts** (Rare): Great stats
+- **Bugs/Fairies** (Normal): Decent stats
+
+Each battle type is visually distinct and synergizes with faction bonuses.
+
+---
+
+## Gameplay Loop
+
+1. **Puzzle Combat:**  
+   - Players match gems to power up attacks, trigger abilities, and charge battle skills.
+   - Certain factions or heroes manipulate the board (e.g., spawn gems, pre-match attacks).
+
+2. **Team Building:**  
+   - Players collect and upgrade heroes/creatures of various rarities, factions, and types.
+   - Synergy bonuses for matching factions, colors, or types.
+   - Teams are composed of 3-5 cards (balance as needed).
+
+3. **Progression:**  
+   - **Starter Campaign:** Tutorial, introduces all playstyles, ends with a Faction/Color choice.
+   - **Campaign:** Linear progression, increasing difficulty, unlocks new cards and features.
+   - **Side-Quests:** Challenge stages with guaranteed rarity drops.
+   - **Events:** Limited-time challenges with exclusive or purchaseable teams.
+
+4. **Leveling & Evolution:**  
+   - Heroes/creatures gain XP and can be evolved (using materials or combining cards).
+   - Evolution can unlock new abilities or raise rarity.
+
+---
+
+## Monetization & Unlocks
+
+- **Classes/Teams:**  
+  - One class unlocked at Level 5.
+  - Additional classes can be bought or earned.
+  - Class-specific heroes are locked until class is unlocked.
+  - Bundles offer class + card packs for value.
+
+- **Card Packs:**  
+  - Gacha-style packs for new heroes/creatures.
+  - Evolution materials can be traded from unwanted cards.
+
+- **Events:**  
+  - Some teams/heroes only available during events or for purchase.
+
+---
+
+## Example Hero Card
+
+| Name        | Rarity      | Faction             | Type         | Stats              | Ability                             |
+|-------------|-------------|---------------------|--------------|--------------------|--------------------------------------|
+| Zyreus      | Legendary   | Tricked Gods        | God          | ATK: 950, DEF: 800 | Gem Rush: Spawns 3 extra yellow gems |
+| Morvath     | Ultra Rare  | Doomfists           | Demon        | ATK: 900, DEF: 820 | Pre-emptive Strike: 150 damage       |
+
+*(Generate more names using: https://www.fantasynamegenerators.com/)*
+
+---
+
+## Story & World
+
+- **Neutral Starter Campaign:**  
+  - Introduces all factions, allows player to choose their path.
+- **Main Campaign:**  
+  - Progress through various worlds, each themed after a faction.
+  - Narrative reveals the cosmic struggle among factions and types.
+- **Side Quests & Events:**  
+  - Offer short stories, unique challenges, and exclusive rewards.
+
+---
+
+## Additional Gameplay Features
+
+- **Combo Meter:**  
+  - Longer gem chains and combos trigger stronger skills/bonuses.
+- **Skill Customization:**  
+  - As heroes evolve, skills can be customized or swapped (advanced progression).
+- **PvP Arena:**  
+  - Compete against other teams for leaderboard rewards.
+- **Guilds/Alliances:**  
+  - Team up for cooperative quests or boss raids.
+
+---
+
+## Example Progression Flow
+
+1. Complete tutorial and starter campaign.
+2. Choose a faction/color.
+3. Build a starting team from unlocked cards.
+4. Play campaign missions to gain XP and new cards.
+5. Attempt side-quests for guaranteed rarity drops.
+6. Participate in events for exclusive rewards.
+7. Buy/unlock new classes; evolve heroes.
+8. Challenge PvP or join guilds for advanced content.
+
+---
+
+## Art & Theming
+
+- **Astral, cosmic, and mythological visual themes.**
+- **Distinct iconography and color palettes for each faction and rarity.**
+- **Animated hero cards and attack effects.**
+
+---
+
+## Notes
+
+- Expand on each faction’s abilities and lore for deeper world-building.
+- Consider a balanced economy to avoid pay-to-win, favoring skillful play and smart team-building.
+- Regular events and updates will keep the player base engaged.
+
+---
+
+Feel free to request expansions (e.g., detailed lore, sample quests, hero stats, or UI mockups)!
