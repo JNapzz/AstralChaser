@@ -17,7 +17,18 @@
   <div id="board"></div>
   <button id="resetBtn">Reset Board</button>
 
+ <div id="enemy-container" class="hero enemy">
+  <div class="enemy-label"></div>
+  <div class="hero-name" id="enemy-name"></div>
+  <div class="hero-color" id="enemy-color"></div>
+  <div class="bar hp-bar">
+    <div id="enemy-hp-fill" class="fill hp-fill" style="width:100%"></div>
+  </div>
+  <img id="enemy-img" alt="Enemy" style="display:none;" />
+</div>
+
   <!-- Link to JavaScript file -->
   <script src="game.js"></script>
 </body>
 </html>
+

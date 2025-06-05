@@ -14,39 +14,35 @@ const COLORS = [
 // --- HERO DATA ---
 // =======================
 const heroes = [
-  { name: "Flareblade", color: "Red", hp: 100, maxHp: 100, mp: 0, mpMax: 100, attack: 30 },
-  { name: "Aquaria", color: "Blue", hp: 90, maxHp: 90, mp: 0, mpMax: 100, attack: 25 },
-  { name: "Verdant", color: "Green", hp: 110, maxHp: 110, mp: 0, mpMax: 100, attack: 35 }
+  { name: "Flareblade", color: "Red", hp: 100, maxHp: 100, mp: 0, mpMax: 50, attack: 30 },
+  { name: "Aquaria", color: "Blue", hp: 90, maxHp: 90, mp: 0, mpMax: 50, attack: 25 },
+  { name: "Verdant", color: "Green", hp: 110, maxHp: 110, mp: 0, mpMax: 50, attack: 35 }
 ];
 
 // =======================
 // --- ENEMY DATA ---
 // =======================
-let enemy = {
+const enemy = 
+{
   name: "Shadow Fiend",
-  hp: 150,
-  maxHp: 150
-};
-
-const enemyPanel = document.getElementById('enemyPanel');
+  hp: 125,
+  maxHp: 125,
+  color: "Purple"
+//img: "enemy.png" // optional, if you want to use an image
+}
 
 function renderEnemy() {
-  enemyPanel.innerHTML = "";
-  const enemyDiv = document.createElement('div');
-  enemyDiv.className = "enemy";
-
-  const name = document.createElement('div');
-  name.className = "enemy-name";
-  name.textContent = enemy.name;
-
-  const hpBar = document.createElement('div');
-  hpBar.className = "bar enemy-hp-bar";
-  const fillWidth = Math.max(0, (enemy.hp / enemy.maxHp) * 100);
-  hpBar.innerHTML = `<div class="fill enemy-hp-fill" style="width:${fillWidth}%"></div>`;
-
-  enemyDiv.appendChild(name);
-  enemyDiv.appendChild(hpBar);
-  enemyPanel.appendChild(enemyDiv);
+  const enemyNameDiv = document.getElementById('enemy-name');
+  const enemyHpFill = document.getElementById('enemy-hp-fill');
+  const enemyColorDiv = document.getElementById('enemy-color');
+  const enemyImg = document.getElementById('enemy-img');
+  if (enemyNameDiv) enemyNameDiv.textContent = enemy.name;
+  if (enemyHpFill) enemyHpFill.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
+  if (enemyColorDiv) enemyColorDiv.style.background = enemy.color;
+  if (enemyImg && enemy.img) {
+    enemyImg.src = enemy.img;
+    enemyImg.style.display = "block";
+  }
 }
 
 function dealDamageToEnemy(damage, attackerName) {
@@ -66,6 +62,7 @@ function dealDamageToEnemy(damage, attackerName) {
     flashEnemyPanel();
   }
 }
+
 function handleEnemyDefeat() {
   const winDiv = document.createElement("div");
   winDiv.className = "victory";
@@ -78,10 +75,11 @@ function handleEnemyDefeat() {
 }
 
 function flashEnemyPanel() {
-  if (enemyPanel) {
-    enemyPanel.classList.add("hit");
+  const enemyContainer = document.getElementById('enemy-container');
+  if (enemyContainer) {
+    enemyContainer.classList.add("hit");
     setTimeout(() => {
-      enemyPanel.classList.remove("hit");
+      enemyContainer.classList.remove("hit");
     }, 300);
   }
 }
@@ -256,7 +254,7 @@ function initBoard() {
     }
     board.push(row);
   }
-
+  enemy.hp = enemy.maxHp;
   score = 0;
   selected = null;
   animating = false;
@@ -270,7 +268,7 @@ function initBoard() {
   renderEnemy();
 }
 
-function updateBoard() {
+function updateBoard(matchedPositions = []) {
   boardDiv.innerHTML = "";
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
@@ -283,8 +281,12 @@ function updateBoard() {
       if (selected && selected.row === r && selected.col === c) {
         gemDiv.classList.add('selected');
       }
-      gemDiv.onclick = () => selectGem(r, c);
+      // Highlight matched gems
+      if (matchedPositions.some(pos => pos.r === r && pos.c === c)) {
+        gemDiv.classList.add('matched');
+      }
       if (gameOver) gemDiv.style.pointerEvents = "none";
+      gemDiv.onclick = () => selectGem(r, c);
       boardDiv.appendChild(gemDiv);
     }
   }
@@ -325,11 +327,7 @@ function swapGems(r1, c1, r2, c2) {
   setTimeout(() => {
     const matches = findMatches();
     if (matches.length === 0) {
-      // No match: revert swap
-      const temp = board[r1][c1];
-      board[r1][c1] = board[r2][c2];
-      board[r2][c2] = temp;
-      updateBoard();
+      // No match: just end
       animating = false;
     } else {
       pauseTimer();      // Stop countdown during match animation
@@ -408,27 +406,27 @@ function handleMatches(matches) {
     if (hero) {
       hero.mp = Math.min(hero.mp + 10, hero.mpMax);
     }
-    // Hero attacks if MP is full
-if (hero && hero.mp >= hero.mpMax) {
-  hero.mp = 0;
-  dealDamageToEnemy(hero.attack, hero.name);
-    }
   });
 
-  // Remove matched gems (set to null)
-  matches.forEach(({ r, c }) => {
-    board[r][c] = null;
-  });
+  // 1. Highlight matched gems
+  updateBoard(matches);
 
-  updateScore();
-  renderHeroes();
-
-  // Animate falling & new gems
+  // 2. Wait, then remove matched gems and continue
   setTimeout(() => {
-    collapseBoard();
-  }, 300);
-}
+    // Remove matched gems (set to null)
+    matches.forEach(({ r, c }) => {
+      board[r][c] = null;
+    });
 
+    updateScore();
+    renderHeroes();
+
+    // Animate falling & new gems
+    setTimeout(() => {
+      collapseBoard();
+    }, 300);
+  }, 300); // Show highlight for 300ms
+}
 function collapseBoard() {
   for (let c = 0; c < BOARD_SIZE; c++) {
     let pointer = BOARD_SIZE - 1;
@@ -452,7 +450,30 @@ function collapseBoard() {
       handleMatches(newMatches);
     } else {
       animating = false;
-      resumeTimer();  // Resume timer only after all matches cleared
+
+      // Sequential hero attacks with delay
+      function attackHeroesSequentially(index = 0, callback) {
+        if (index >= heroes.length) {
+          if (callback) callback();
+          return;
+        }
+        const hero = heroes[index];
+        if (hero.mp >= hero.mpMax && enemy.hp > 0) {
+          hero.mp = 0;
+          renderHeroes();
+          dealDamageToEnemy(hero.attack, hero.name);
+          setTimeout(() => {
+            if (enemy.hp > 0) {
+              attackHeroesSequentially(index + 1, callback);
+            } else {
+              if (callback) callback();
+            }
+          }, 400);
+        } else {
+          attackHeroesSequentially(index + 1, callback);
+        }
+      }
+      attackHeroesSequentially(0, resumeTimer);
     }
   }, 300);
 }
