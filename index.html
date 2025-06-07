@@ -1,34 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Astral Chaser - Match 3 Demo (Diagonal Swap & Match)</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <title>Match-3 Heroes Game</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Astral Chaser: Match-3 Demo</h1>
-  <div class="info">Swap adjacent gems to match 3 or more of the same color!</div>
+    <h1>Match-3 Heroes</h1>
+    <div id="score">Score: 0</div>
+    <div id="timer">Time: 10.0</div>
+    <button id="resetBtn">Reset Board</button>
 
-  <!-- Hero panel container -->
-  <div id="heroPanel" class="hero-panel"></div>
-  <div id="heroes-container"></div>
-  <div id="score">Score: 0</div>
-  <div id="timer">Time: 10.0</div>
-  <div id="board"></div>
-  <button id="resetBtn">Reset Board</button>
+    <div id="enemy-container">
+        <div id="enemy-name">Enemy</div>
+        <div id="enemy-hp-bar">
+            <div id="enemy-hp-fill"></div>
+        </div>
+        <div id="enemy-color"></div>
+    </div>
 
- <div id="enemy-container" class="hero enemy">
-  <div class="enemy-label"></div>
-  <div class="hero-name" id="enemy-name"></div>
-  <div class="hero-color" id="enemy-color"></div>
-  <div class="bar hp-bar">
-    <div id="enemy-hp-fill" class="fill hp-fill" style="width:100%"></div>
-  </div>
-  <img id="enemy-img" alt="Enemy" style="display:none;" />
-</div>
+    <div id="board"></div>
 
-  <!-- Link to JavaScript file -->
-  <script src="game.js"></script>
+    <div id="heroPanel"></div>
+
+    <script src="game.js"></script>
 </body>
 </html>
-

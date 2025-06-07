@@ -1,491 +1,469 @@
-// =======================
-// --- GAME SETTINGS ---
-// =======================
-const BOARD_SIZE = 8; // 8x8 board
-const COLORS = [
-  { name: "Yellow", code: "#FFEB3B" },
-  { name: "Red", code: "#E53935" },
-  { name: "Green", code: "#43A047" },
-  { name: "Blue", code: "#1E88E5" },
-  { name: "Purple", code: "#9C27B0" }
+//-------Game and Board Logic--------//
+const BOARD_SIZE = 8;  // Create Board and set size of board
+
+const COLORS = [ //Create an array of colors for gems
+    { name: "Yellow", code: "#FFEB3B"},
+    { name: "Red", code: "#E53935"},
+    { name: "Green", code: "#43A047"},
+    { name: "Blue", code: "#1E88E5"},
+    { name: "Purple", code: "#9C27B0"}
 ];
+//Create Game State
+let board = []; //Create an empty array named board
+let score = 0; //Create a variable to hold the score
+let selected = null; //Create a variable to hold the selected gem
+let animating = false; //Create a variable to check if the game is animating
+let gameOver = false;  //Create a variable to check if the game is over
 
-// =======================
-// --- HERO DATA ---
-// =======================
-const heroes = [
-  { name: "Flareblade", color: "Red", hp: 100, maxHp: 100, mp: 0, mpMax: 50, attack: 30 },
-  { name: "Aquaria", color: "Blue", hp: 90, maxHp: 90, mp: 0, mpMax: 50, attack: 25 },
-  { name: "Verdant", color: "Green", hp: 110, maxHp: 110, mp: 0, mpMax: 50, attack: 35 }
-];
+//Timer State
+const TIMER_START = 10000; //Set the timer to 10 seconds
+let timeLeft = TIMER_START; //Set the time left to the timer start
+let timerInterval = null; //Create a variable to hold the timer interval
+let timerPaused = false; //Create a variable to check if the timer is paused
+let lastTick = null; //Create a variable to hold the last tick time
 
-// =======================
-// --- ENEMY DATA ---
-// =======================
-const enemy = 
-{
-  name: "Shadow Fiend",
-  hp: 125,
-  maxHp: 125,
-  color: "Purple"
-//img: "enemy.png" // optional, if you want to use an image
-}
+//DOM Elements
+const boardDiv = document.getElementById("board"); //Get the board div from the DOM
+const scoreDiv = document.getElementById("score"); //Get the score div from the DOM
+const timerDiv = document.getElementById("timer"); //Get the timer div from the DOM
+const resetBtn = document.getElementById("resetBtn"); //Get the reset button from the DOM
+const heroPanel = document.getElementById("heroPanel"); //Get the hero panel from the DOM
 
-function renderEnemy() {
-  const enemyNameDiv = document.getElementById('enemy-name');
-  const enemyHpFill = document.getElementById('enemy-hp-fill');
-  const enemyColorDiv = document.getElementById('enemy-color');
-  const enemyImg = document.getElementById('enemy-img');
-  if (enemyNameDiv) enemyNameDiv.textContent = enemy.name;
-  if (enemyHpFill) enemyHpFill.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
-  if (enemyColorDiv) enemyColorDiv.style.background = enemy.color;
-  if (enemyImg && enemy.img) {
-    enemyImg.src = enemy.img;
-    enemyImg.style.display = "block";
-  }
-}
-
-function dealDamageToEnemy(damage, attackerName) {
-  const logDiv = document.createElement("div");
-  logDiv.className = "damage-log";
-  logDiv.textContent = `${attackerName} hits ${enemy.name} for ${damage}!`;
-  document.body.appendChild(logDiv);
-
-  setTimeout(() => logDiv.remove(), 1500);
-
-  enemy.hp = Math.max(0, enemy.hp - damage);
-  renderEnemy();
-
-  if (enemy.hp === 0) {
-    handleEnemyDefeat();
-  } else {
-    flashEnemyPanel();
-  }
-}
-
-function handleEnemyDefeat() {
-  const winDiv = document.createElement("div");
-  winDiv.className = "victory";
-  winDiv.textContent = "Enemy Defeated!";
-  document.body.appendChild(winDiv);
-
-  stopTimer();
-  gameOver = true;
-  animating = true;
-}
-
-function flashEnemyPanel() {
-  const enemyContainer = document.getElementById('enemy-container');
-  if (enemyContainer) {
-    enemyContainer.classList.add("hit");
-    setTimeout(() => {
-      enemyContainer.classList.remove("hit");
-    }, 300);
-  }
-}
-// =======================
-// --- GAME STATE ---
-// =======================
-let board = [];
-let score = 0;
-let selected = null; // {row, col}
-let animating = false;
-let gameOver = false;
-
-// =======================
-// --- TIMER STATE ---
-// =======================
-const TIMER_START = 10000; // 10 seconds in ms
-let timerInterval = null;
-let timerPaused = false;
-let timeLeft = TIMER_START;
-let lastTick = null;
-
-// =======================
-// --- DOM ELEMENTS ---
-// =======================
-const boardDiv = document.getElementById('board');
-const scoreDiv = document.getElementById('score');
-const timerDiv = document.getElementById('timer');
-const resetBtn = document.getElementById('resetBtn');
-const heroPanel = document.getElementById('heroPanel');
-
-// =======================
-// --- TIMER FUNCTIONS ---
-// =======================
-function formatTime(ms) {
-  const sec = Math.floor(ms / 1000);
-  const tenths = Math.floor((ms % 1000) / 100);
-  return `${sec}.${tenths}`;
-}
-
-function updateTimerDisplay() {
-  timerDiv.textContent = "Time: " + formatTime(Math.max(timeLeft, 0));
-}
-
-function startTimer() {
-  if (timerInterval) return;
-  timerPaused = false;
-  lastTick = Date.now();
-  timerInterval = setInterval(() => {
-    if (!timerPaused && !gameOver) {
-      const now = Date.now();
-      const dt = now - lastTick;
-      lastTick = now;
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        timeLeft = 0;
-        updateTimerDisplay();
-        stopTimer();
-        handleGameOver();
-        return;
-      }
-      updateTimerDisplay();
-    }
-  }, 100);
-}
-
-function stopTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-}
-
-function pauseTimer() {
-  if (!timerPaused && !gameOver) {
-    timerPaused = true;
-    const now = Date.now();
-    timeLeft -= Math.max(0, now - lastTick);
-    updateTimerDisplay();
-  }
-}
-
-function resumeTimer() {
-  if (timerPaused && !gameOver) {
-    timerPaused = false;
-    lastTick = Date.now();
-  }
-}
-
-function resetTimer() {
-  stopTimer();
-  timeLeft = TIMER_START;
-  timerPaused = false;
-  gameOver = false;
-  updateTimerDisplay();
-}
-
-function handleGameOver() {
-  gameOver = true;
-  animating = true;
-  timerDiv.textContent = "Time: 0.0 (Game Over)";
-}
-
-// =======================
-// --- HERO UI FUNCTIONS ---
-// =======================
-function renderHeroes() {
-  heroPanel.innerHTML = "";
-  heroes.forEach(hero => {
-    const heroDiv = document.createElement('div');
-    heroDiv.className = "hero";
-
-    // Name
-    const name = document.createElement('div');
-    name.className = "hero-name";
-    name.textContent = hero.name;
-
-    // Color badge
-    const colorBadge = document.createElement('div');
-    colorBadge.className = "hero-color";
-    const colorObj = COLORS.find(c => c.name === hero.color);
-    colorBadge.style.backgroundColor = colorObj ? colorObj.code : "#ccc";
-
-    // HP bar
-    const hpBar = document.createElement('div');
-    hpBar.className = "bar hp-bar";
-    hpBar.innerHTML = `<div style="width:${(hero.hp / hero.maxHp) * 100}%" class="fill hp-fill"></div>`;
-
-    // MP bar
-    const mpBar = document.createElement('div');
-    mpBar.className = "bar mp-bar";
-    mpBar.innerHTML = `<div style="width:${(hero.mp / hero.mpMax) * 100}%" class="fill mp-fill"></div>`;
-
-    // Append all
-    heroDiv.appendChild(name);
-    heroDiv.appendChild(colorBadge);
-    heroDiv.appendChild(hpBar);
-    heroDiv.appendChild(mpBar);
-
-    heroPanel.appendChild(heroDiv);
-  });
-}
-
-function resetHeroesMp() {
-  heroes.forEach(hero => {
-    hero.mp = 0;
-  });
-  renderHeroes();
-}
-
-// =======================
-// --- BOARD FUNCTIONS ---
-// =======================
+//-----Board Functions-----//
 function randomGem() {
-  return Math.floor(Math.random() * COLORS.length);
+    return Math.floor(Math.random() * COLORS.length); //Creating a random gem based on the amount of colors
 }
 
 function initBoard() {
-  board = [];
-  for (let r = 0; r < BOARD_SIZE; r++) {
-    const row = [];
-    for (let c = 0; c < BOARD_SIZE; c++) {
-      let gem;
-      do {
-        gem = randomGem();
-        row[c] = gem;
-      } while (
-        (c >= 2 && row[c-1] === gem && row[c-2] === gem) ||
-        (r >= 2 && board[r-1][c] === gem && board[r-2][c] === gem) ||
-        (r >= 2 && c >= 2 && board[r-1][c-1] === gem && board[r-2][c-2] === gem) ||
-        (r >= 2 && c <= BOARD_SIZE - 3 && board[r-1][c+1] === gem && board[r-2][c+2] === gem)
-      );
+
+const victoryMsg = document.querySelector('.Victory'); //Check if there is a victory message in the DOM
+if(victoryMsg) {
+    victoryMsg.remove(); //Remove the victory message if it exists
+};
+
+    board = []; //Creating a new board each time this function is called
+    for (let r = 0; r < BOARD_SIZE; r++) {
+        const row = []; //Create a new row
+        for (let c = 0; c < BOARD_SIZE; c++) {
+            let gem; 
+            do {
+                gem = randomGem(); //Call randomGem function to get a random colored gem for each row   
+                row[c] = gem; //Assign the gem to the column 
+            } while (
+                (c >= 2 && row[c-1] === gem && row[c-2] === gem) || //Check if the gem is the same as the previous two gems in the row
+                (r >= 2 && board[r-1][c] === gem && board[r-2][c] === gem) || //Check if the gem is the same as the previous two gems in the column
+                (r >= 2 && c >= 2 && board[r-1][c-1] === gem && board[r-2][c-2] === gem) || //Check if the gem is the same as the previous two gems in the diagonal
+                (r >=2 && c <= BOARD_SIZE - 3 && board[r-1][c+1] === gem && board[r-2][c+2] === gem) //Check if the gem is the same as the previous two gems in the diagonal
+            );
+        }
+        board.push(row); //Push the row to the board
     }
-    board.push(row);
-  }
-  enemy.hp = enemy.maxHp;
-  score = 0;
-  selected = null;
-  animating = false;
-  gameOver = false;
-  updateBoard();
-  updateScore();
-  resetTimer();
-  startTimer();
-  resetHeroesMp();
-  renderHeroes();
-  renderEnemy();
+    enemy.hp = enemy.maxHp;
+    score = 0; //Reset the score
+    selected = null; //Reset the selected gem
+    animating = false; //Reset the animating state
+    gameOver = false; //Reset the game over state
+    updateBoard(); //Update the board
+    updateScore(); //Update the score
+    resetTimer(); //Reset the timer
+    startTimer(); //Start the timer
+    resetHeroesMp(); //Reset the heroes MP
+    renderHeroes(); //Render the heroes
+    renderEnemy(); //Render the enemy
+}
+ function updateBoard(matchedPositions = []) {
+    boardDiv.innerHTML = ""; //Clear the board div
+    for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+            const gemDiv = document.createElement('div'); //Create a new div for each gem
+            gemDiv.className = 'gem'; //Set the class name to gem
+            gemDiv.style.background = COLORS[board[r][c]].code; //Set the background color to the gem color
+            gemDiv.title = COLORS[board[r][c]].name; //Set the title to the gem name
+            gemDiv.dataset.row = r; //Set the data row attribute to the row index
+            gemDiv.dataset.col = c; //Set the data column attribute to the column index
+            if (selected && selected.row === r && selected.col === c) { //Check if the gem is selected
+                gemDiv.classList.add('selected'); //Add the selected class if the gem is selected
+                 }
+            if (matchedPositions.some(pos => pos.r === r && pos.c === c)){ //Check if the gem is in the matched positions
+                gemDiv.classList.add('matched'); //Add the matched class if the gem is matched
+            }
+            if (gameOver) gemDiv.style.pointerEvents = 'none'; //Disable pointer events if the game is over
+            gemDiv.onclick = () => selectGem(r, c); //Set the onclick event to select the gem
+            boardDiv.appendChild(gemDiv); //Append the gem div to the board div
+        }
+     }
 }
 
-function updateBoard(matchedPositions = []) {
-  boardDiv.innerHTML = "";
-  for (let r = 0; r < BOARD_SIZE; r++) {
-    for (let c = 0; c < BOARD_SIZE; c++) {
-      const gemDiv = document.createElement('div');
-      gemDiv.className = 'gem';
-      gemDiv.style.background = COLORS[board[r][c]].code;
-      gemDiv.title = COLORS[board[r][c]].name;
-      gemDiv.dataset.row = r;
-      gemDiv.dataset.col = c;
-      if (selected && selected.row === r && selected.col === c) {
-        gemDiv.classList.add('selected');
-      }
-      // Highlight matched gems
-      if (matchedPositions.some(pos => pos.r === r && pos.c === c)) {
-        gemDiv.classList.add('matched');
-      }
-      if (gameOver) gemDiv.style.pointerEvents = "none";
-      gemDiv.onclick = () => selectGem(r, c);
-      boardDiv.appendChild(gemDiv);
-    }
-  }
+function collapseBoard() {
+    for (let c = 0; c < BOARD_SIZE; c++) { // Loop through each column
+        let pointer = BOARD_SIZE - 1; // Set a pointer to the bottom of the column
+        for (let r = BOARD_SIZE - 1; r >= 0; r--) { // Loop through each row from bottom to top
+            if (board[r][c] !== null) { //Check if the gem is not null
+                board[pointer][c] = board[r][c]; //Move the gem to the pointer position
+                if (pointer !== r) board[r][c] = null; //Set the original position to null if the pointer is not the same as the row
+                pointer--; //Move the pointer up
+                }
+            }
+            for (let r = pointer; r >= 0; r--) { // Loop through the remaining rows above the pointer
+                board[r][c] = randomGem(); //Fill the remaining positions with new random gems
+            }
+        }
+        updateBoard(); //Update the board to reflect the changes
+        setTimeout(() => {
+            if(gameOver) {
+                return; //Return if the game is over
+            };
+            const matches = findMatches(); //Find matches after collapsing the board
+            if(matches.length > 0) { //Check if there are matches
+                pauseTimer(); //Pause the timer if there are matches
+                handleMatches(matches); //Handle the matches found
+            }
+        }, 300)
 }
 
 function updateScore() {
-  scoreDiv.textContent = `Score: ${score}`;
+    scoreDiv.textContent = `Score: ${score}`; //Update the score div with the current score
 }
 
-// =======================
-// --- INPUT HANDLING ---
-// =======================
-function selectGem(row, col) {
-  if (animating || gameOver) return;
-
-  if (!selected) {
-    selected = { row, col };
-  } else {
-    const dist = Math.abs(selected.row - row) + Math.abs(selected.col - col);
-    // allow horizontal, vertical, and diagonal swaps dist=1 or 2 (diagonal)
-    if (dist === 1 || dist === 2) {
-      swapGems(selected.row, selected.col, row, col);
-    }
-    selected = null;
-  }
-  updateBoard();
-}
-
-function swapGems(r1, c1, r2, c2) {
-  animating = true;
-
-  // Swap gems on board
-  const temp = board[r1][c1];
-  board[r1][c1] = board[r2][c2];
-  board[r2][c2] = temp;
-  updateBoard();
-
-  setTimeout(() => {
-    const matches = findMatches();
-    if (matches.length === 0) {
-      // No match: just end
-      animating = false;
-    } else {
-      pauseTimer();      // Stop countdown during match animation
-      handleMatches(matches);
-    }
-  }, 200);
-}
-
-// =======================
-// --- MATCH FINDING & HANDLING ---
-// =======================
+//----Match  Handling -----//
 function findMatches() {
-  let matches = [];
+    let matches = []; //Create an empty array to hold the matches
+    for(let r = 0; r < BOARD_SIZE; r++) {
+        for(let c = 0; c < BOARD_SIZE; c++) {
+            const color = board[r][c]; //Get the color of the gem at the current position
 
-  for (let r = 0; r < BOARD_SIZE; r++) {
-    for (let c = 0; c < BOARD_SIZE; c++) {
-      const color = board[r][c];
-
-      // Horizontal match
-      if (c <= BOARD_SIZE - 3) {
-        if (board[r][c+1] === color && board[r][c+2] === color) {
-          matches.push({ r, c }, { r, c: c+1 }, { r, c: c+2 });
-        }
-      }
-
-      // Vertical match
-      if (r <= BOARD_SIZE - 3) {
-        if (board[r+1][c] === color && board[r+2][c] === color) {
-          matches.push({ r, c }, { r: r+1, c }, { r: r+2, c });
-        }
-      }
-
-      // Diagonal down-right
-      if (r <= BOARD_SIZE - 3 && c <= BOARD_SIZE - 3) {
-        if (board[r+1][c+1] === color && board[r+2][c+2] === color) {
-          matches.push({ r, c }, { r: r+1, c: c+1 }, { r: r+2, c: c+2 });
-        }
-      }
-
-      // Diagonal down-left
-      if (r <= BOARD_SIZE - 3 && c >= 2) {
-        if (board[r+1][c-1] === color && board[r+2][c-2] === color) {
-          matches.push({ r, c }, { r: r+1, c: c-1 }, { r: r+2, c: c-2 });
-        }
-      }
-    }
-  }
-
-  // Remove duplicates
-  const uniqueMatches = [];
-  const seen = new Set();
-  for (const m of matches) {
-    const key = `${m.r},${m.c}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      uniqueMatches.push(m);
-    }
-  }
-  return uniqueMatches;
-}
-
-function handleMatches(matches) {
-  // Increase score & grant mana by matched gem color
-  const matchedColors = new Set();
-  matches.forEach(({ r, c }) => {
-    const colorIndex = board[r][c];
-    if (colorIndex !== null) {
-      const colorName = COLORS[colorIndex].name;
-      matchedColors.add(colorName);
-    }
-  });
-
-  matchedColors.forEach(colorName => {
-    score += 10;
-    const hero = heroes.find(h => h.color === colorName);
-    if (hero) {
-      hero.mp = Math.min(hero.mp + 10, hero.mpMax);
-    }
-  });
-
-  // 1. Highlight matched gems
-  updateBoard(matches);
-
-  // 2. Wait, then remove matched gems and continue
-  setTimeout(() => {
-    // Remove matched gems (set to null)
-    matches.forEach(({ r, c }) => {
-      board[r][c] = null;
-    });
-
-    updateScore();
-    renderHeroes();
-
-    // Animate falling & new gems
-    setTimeout(() => {
-      collapseBoard();
-    }, 300);
-  }, 300); // Show highlight for 300ms
-}
-function collapseBoard() {
-  for (let c = 0; c < BOARD_SIZE; c++) {
-    let pointer = BOARD_SIZE - 1;
-    for (let r = BOARD_SIZE - 1; r >= 0; r--) {
-      if (board[r][c] !== null) {
-        board[pointer][c] = board[r][c];
-        if (pointer !== r) board[r][c] = null;
-        pointer--;
-      }
-    }
-    // Fill top empty slots
-    for (let r = pointer; r >= 0; r--) {
-      board[r][c] = randomGem();
-    }
-  }
-  updateBoard();
-
-  setTimeout(() => {
-    const newMatches = findMatches();
-    if (newMatches.length > 0) {
-      handleMatches(newMatches);
-    } else {
-      animating = false;
-
-      // Sequential hero attacks with delay
-      function attackHeroesSequentially(index = 0, callback) {
-        if (index >= heroes.length) {
-          if (callback) callback();
-          return;
-        }
-        const hero = heroes[index];
-        if (hero.mp >= hero.mpMax && enemy.hp > 0) {
-          hero.mp = 0;
-          renderHeroes();
-          dealDamageToEnemy(hero.attack, hero.name);
-          setTimeout(() => {
-            if (enemy.hp > 0) {
-              attackHeroesSequentially(index + 1, callback);
-            } else {
-              if (callback) callback();
+            //Horizontal Match
+            if (c <= BOARD_SIZE - 3) {
+                if (board[r][c+1] === color && board[r][c+2] === color) { //Check if the next two gems in the row are the same color
+                    matches.push({r, c}, {r, c: c+1}, {r, c: c+2}); //If they are, push the positions to the matches array
+                }
             }
-          }, 400);
-        } else {
-          attackHeroesSequentially(index + 1, callback);
+            //Vertical Match
+            if (r <= BOARD_SIZE - 3) {
+                if (board[r+1][c] === color && board [r+2][c] === color) { //Check if the next two gems in the column are the same color
+                    matches.push({r, c}, {r: r+1, c}, {r: r+2, c}); //If they are, push the positions to the matches array
+                }
+            }
+            //Diagonal Match (Top-Left to Bottom-Right)
+            if (r <= BOARD_SIZE - 3 && c <= BOARD_SIZE - 3) {
+                if (board[r+1][c+1] === color && board[r+2][c+2] === color) { //Check if the next two gems in the diagonal are the same color
+                    matches.push({r, c}, {r: r+1, c: c+1}, {r: r+2, c: c+2}); //If they are, push the positions to the matches array
+                }
+            }
+            //Diagonal Match (Top-Right to Bottom-Left)
+            if (r <= BOARD_SIZE - 3 && c >= 2) {
+                if (board[r+1][c-1] === color && board[r+2][c-2] === color) { //Check if the next two gems in the diagonal are the same color
+                    matches.push({r, c}, {r: r+1, c: c-1}, {r: r+2, c: c-2}); //If they are, push the positions to the matches array
+                }
+            }
         }
-      }
-      attackHeroesSequentially(0, resumeTimer);
     }
-  }, 300);
-}
 
-// =======================
-// --- EVENT LISTENERS ---
-// =======================
-resetBtn.onclick = () => {
-  initBoard();
+//Remove duplicates from the matches array
+const uniqueMatches = []; //Create an empty array to hold the unique matches
+const seen = new Set(); //Create a set to hold the seen positions
+for (const m of matches) {
+    const key = `${m.r},${m.c}`; //Create a unique key for each position
+    if(!seen.has(key)) { //Check if the position has not been seen before
+        seen.add(key); //Add the position to the seen set
+        uniqueMatches.push(m); //Push the position to the unique matches array
+        }
+    }
+    return uniqueMatches; //Return the unique matches array
 };
 
-// =======================
-// --- INIT GAME ---
-// =======================
-initBoard();
+function handleMatches(matches) {
+    if(gameOver) {
+        return; //Return if the game is over
+    };
+    const matchedColors = new Set(); //Create a set to hold the matched colors
+    matches.forEach(({r, c}) => {
+        const colorIndex = board[r][c]; //Get the color index of the matched gem
+        if(colorIndex !== null) { 
+            const colorName = COLORS[colorIndex].name; //Get the color name from the COLORS array
+            matchedColors.add(colorName); //Add the color name to the matched colors set
+        }
+    });
+    matchedColors.forEach(colorName => {
+        score+= 10; //Increase the score by 10 for each matched color
+        const hero = heroes.find(h => h.color === colorName); //Find the hero with the matched color
+        if (hero) {
+            hero.mp = Math.min(hero.mp + 10, hero.mpMax); //Increase the hero MP by 10, but not exceeding the max MP
+        }
+    });
+
+    updateBoard(matches); //Update the board with the matched positions
+
+    setTimeout(() => { //Set a timeout to allow the board to update before collapsing
+        matches.forEach(({r, c}) => { // Loop through each matched position
+            board[r][c] = null; //Set the matched positions to null
+        }); 
+        updateScore(); //Update the score
+        renderHeroes(); //Render the heroes to reflect the updated MP
+
+        setTimeout(() => {
+            collapseBoard(); //Collapse the board after a delay
+
+            setTimeout(() => {
+        attackHeroesSequentially(0, resumeTimer); // Heroes attack, then resume timer
+        animating = false; 
+            }, 350);
+        }, 300);
+    }, 200);
+}
+       
+
+
+//----- Input Handling -----//
+function swapGems(r1, c1, r2, c2){
+    animating = true; //Set animating to true to prevent further input
+    const temp = board[r1][c1]; //Store the gem at the first position in a temporary variable
+    board[r1][c1] = board[r2][c2]; //Swap the gems in the board array
+    board[r2][c2] = temp; //Assign the temporary variable to the second position
+    updateBoard(); //Update the board to reflect the changes
+
+    setTimeout(() => {
+        const matches = findMatches(); 
+        if(matches.length === 0) {
+            animating =false; 
+        }else{
+            pauseTimer(); //Pause the timer if there are matches
+            handleMatches(matches); //Handle the matches found
+        }
+    }, 200); //Set a timeout to allow the board to update before checking for matches
+}
+
+function selectGem(row, col) {
+    if (animating || gameOver) return; //Return if the game is animating or over
+    if (!selected) { //If no gem is selected
+        selected = { row, col }; //Set the selected gem if no gem is selected
+    } else { //If a gem is already selected
+        const dist = Math.abs(selected.row - row) + Math.abs(selected.col - col); //Calculate the distance between the selected gem and the current gem
+        if (dist === 1 || dist === 2) {
+            swapGems(selected.row, selected.col, row, col); //Call the swapGems function to swap the gems
+        }
+        selected = null; //Reset the selected gem
+}
+updateBoard(); 
+};
+
+//----- Hero and Enemy Logic------//
+
+// Hero Data
+const heroes = [
+{ name: "Flareblade", color: "Red", hp: 100, maxHp: 100, mp: 0, mpMax: 50, attack: 30 },
+{ name: "Aquaria", color: "Blue", hp: 90, maxHp: 90, mp: 0, mpMax: 50, attack: 25 },
+{ name: "Verdant", color: "Green", hp: 110, maxHp: 110, mp: 0, mpMax: 50, attack: 35 },
+{ name: "Stormcaller", color: "Yellow", hp: 95, maxHp: 95, mp: 0, mpMax: 50, attack: 28 },
+{ name: "Shadowstrike", color: "Purple", hp: 85, maxHp: 85, mp: 0, mpMax: 50, attack: 20 }
+];
+
+//Hero Logic
+function renderHeroes() {
+    heroPanel.innerHTML = ""; //Clear the hero panel
+    heroes.forEach(hero => {
+        const heroDiv = document.createElement('div'); //Create a new div for each hero
+        heroDiv.className = "hero"; //Set the class name to hero
+        heroPanel.appendChild(heroDiv); //Append the hero div to the hero panel
+       
+        //Name
+        const name = document.createElement('div'); //Create a new div for the hero name
+        name.className = "hero-name"; //Set the class name to hero-name
+        name.textContent = hero.name; //Set the text content to the hero name
+        heroDiv.appendChild(name); //Append the name div to the hero div
+
+        //Color
+        const colorBadge = document.createElement('div'); //Create a new div for the hero color
+        colorBadge.className = "hero-color"; //Set the class name to hero-color
+        const colorObj = COLORS.find(c => c.name === hero.color); //Find the color object based on the hero color
+        colorBadge.style.backgroundColor = colorObj.code; //Set the background color to the hero color
+        heroDiv.appendChild(colorBadge); //Append the color badge to the hero div
+
+        // HP Bar
+        const hpBar = document.createElement('div'); //Create a new div for the hero HP bar
+        hpBar.className = "hero-hp"; //Set the class name to hero-hp
+        hpBar.style.width = `${(hero.hp / hero.maxHp) * 100}%`; //Set the width of the HP bar based on the hero HP
+        heroDiv.appendChild(hpBar); //Append the HP bar to the hero div
+
+        // MP Bar
+        const mpBar = document.createElement('div'); //Create a new div for the hero MP bar
+        mpBar.className = "hero-mp"; //Set the class name to hero-mp
+        mpBar.style.width = `${(hero.mp / hero.mpMax) * 100}%`; //Set the width of the MP bar based on the hero MP
+        heroDiv.appendChild(mpBar); //Append the MP bar to the hero div
+    });
+};
+        function resetHeroesMp() {
+            heroes.forEach(hero => {
+                hero.mp = 0; //Reset the hero MP to 0
+            })
+        
+        renderHeroes(); //Call the renderHeroes function to render the heroes
+        };
+
+        // Sequential Attack Logic
+        function attackHeroesSequentially(index = 0, callback) {
+            if(gameOver) {
+                return; //Return if the game is over
+            };
+            if (index >= heroes.length) { //Check if the index is greater than or equal to the length of the heroes array
+                if (callback) callback(); //Call the callback function if provided
+                return; //Return if all heroes have attacked
+            }
+            const hero = heroes[index]; //Get the hero at the current index
+            if (hero.mp >= hero.mpMax && enemy.hp > 0) { //Check if the hero MP is greater than or equal to the hero MP max and the enemy HP is greater than 0
+                hero.mp = 0; //Reset the hero MP to 0
+                renderHeroes(); //Call the renderHeroes function to render the heroes
+                dealDamageToEnemy(hero.attack, hero.name); //Call the dealDamageToEnemy function to deal damage to the enemy
+                setTimeout(() => {
+                    if (enemy.hp > 0) {
+                        attackHeroesSequentially(index + 1, callback); //Call the attackHeroesSequentially function with the next index
+                    }else{
+                        if (callback) callback(); 
+                    }
+                }, 400); //Set a timeout to allow the enemy to take damage before the next hero attacks 
+            } else {
+                attackHeroesSequentially(index + 1, callback); //Call the attackHeroesSequentially function with the next index if the hero MP is less than the hero MP max
+            }
+        };
+        
+
+ // ------ Enemy Logic -----//
+
+ // Enemy Data
+ const enemy = {
+    name: "Shadow Fiend",
+    hp: 125,
+    maxHp: 125,
+    color: "Purple"
+ };
+
+ //Enemy Logic
+
+ function renderEnemy() {
+    const enemyNameDiv = document.getElementById('enemy-name'); //Get the enemy name div from the DOM
+    const enemyHpFill = document.getElementById('enemy-hp-fill'); //Get the enemy HP div from the DOM
+    const enemyColorDiv = document.getElementById('enemy-color'); //Get the enemy color div from the DOM
+    if(enemyNameDiv) enemyNameDiv.textContent= enemy.name; //Set the text content of the enemy name div to the enemy name
+    if(enemyHpFill) enemyHpFill.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;//Set the width of the enemy HP bar based on the enemy HP
+    if(enemyColorDiv) enemyColorDiv.style.background = enemy.color; //Set the background color of the enemy color div to the enemy color 
+ };
+
+ function dealDamageToEnemy(damage, attackerName) { //Function to deal damage to the enemy
+    const logDiv = document.createElement("div"); //Create a new div for the log
+    logDiv.className = "damage-log"; //Set the class name to damage-log
+    logDiv.textContent = `${attackerName} hits ${enemy.name} for ${damage}!`; //Set the text content of the log div to the attack message
+    document.body.appendChild(logDiv); //Append the log div to the body
+
+    setTimeout(() => logDiv.remove(), 1500); //Set a timeout to remove the log div after 1.5 seconds
+    enemy.hp = Math.max(0, enemy.hp -damage); //Reduce the enemy HP by the damage amount, ensuring it doesn't go below 0
+    renderEnemy(); //Call the renderEnemy function to render the enemy
+
+    if (enemy.hp === 0) {
+        handleEnemyDefeat(); //Call the handleEnemyDefeat function if the enemy HP is 0
+    } else {
+        flashEnemyPanel(); //Call the flashEnemyPanel function to flash the enemy panel
+    }
+ };
+
+ function handleEnemyDefeat() {
+    const winDiv = document.createElement("div"); //Create a new div for the win message
+    winDiv.className = "Victory"; //Set the class name to Victory
+    winDiv.textContent = "You defeated the enemy!"; //Set the text content of the win message
+    document.body.appendChild(winDiv); //Append the win message to the body
+
+    stopTimer(); 
+    gameOver = true; 
+    animating = true; 
+ };
+
+ function flashEnemyPanel() {
+    const enemyContainer = document.getElementById("enemy-container"); //Get the enemy container from the DOM
+    if (enemyContainer) {
+        enemyContainer.classList.add("hit"); //Add the hit class to the enemy container to trigger the flash animation
+        setTimeout(() => {
+            enemyContainer.classList.remove("hit"); //Remove the hit class after the animation duration
+        }, 300); //Set a timeout to remove the hit class after 300 milliseconds
+    }
+ };
+
+//----- Timer Logic -----//
+function formatTime(ms) {
+    const sec = Math.floor(ms / 1000); //Convert milliseconds to seconds
+    const tenths = Math.floor((ms % 1000) / 100); //Get the tenths of a second
+    return `${sec}.${tenths}`; //Return the formatted time as a string
+};
+
+function updateTimerDisplay() {
+    timerDiv.textContent = "Time: " + formatTime(Math.max(timeLeft, 0));
+};
+
+function startTimer() { //Function to start the timer
+    if (timerInterval) return; //Check if the timer interval is already set
+    timerPaused = false; //Set the timer paused state to false
+    lastTick = Date.now(); //Set the last tick time to the current time
+
+    timerInterval = setInterval(() => { //Set an interval to update the timer every 100 milliseconds
+        if (!timerPaused && !gameOver) { //Check if the timer is not paused and the game is not over
+            const now = Date.now(); //Get the current time
+            const dt = now - lastTick; //Calculate the time since the last tick
+            lastTick = now; //Update the last tick time to the current time
+            timeLeft -= dt; //Subtract the time since the last tick from the time left
+
+            if (timeLeft <= 0) { //Check if the time left is less than or equal to 0
+                timeLeft = 0; //Set the time left to 0
+                updateTimerDisplay(); //Update the timer display
+                stopTimer();  //Stop the timer
+                handleGameOver();  //Handle the game over state
+                return; 
+            }
+
+            updateTimerDisplay(); 
+        }
+    }, 100);
+}
+
+
+function stopTimer() { //Function to stop the timer
+    if (timerInterval) { //Check if the timer interval is set
+        clearInterval(timerInterval); //Clear the timer interval
+        timerInterval = null; //Set the timer interval to null
+    }
+};
+
+function pauseTimer() {
+    if(!timerPaused &&!gameOver) { //Check if the timer is not paused and the game is not over
+        timerPaused = true; //Set the timer paused state to true
+        const now = Date.now(); 
+        timeLeft -= Math.max(0, now - lastTick); //Subtract the time since the last tick from the time left
+        updateTimerDisplay();
+    }
+};
+
+function resumeTimer() {
+    if (timerPaused && !gameOver) {
+        timerPaused = false; 
+        lastTick = Date.now();
+    }
+};
+
+function resetTimer() {
+    stopTimer(); 
+    timeLeft = TIMER_START; 
+    timerPaused = false; 
+    gameOver = false;
+    updateTimerDisplay(); 
+};
+
+function handleGameOver() {
+    gameOver = true; 
+    animating = true; 
+    timerDiv.textContent = "Time: 0.0 (Game Over)";
+};
+
+//----- Event Listeners -----//
+resetBtn.onclick = () => {
+    initBoard();
+};
+
+// Initialize the game board when the page loads
+initBoard(); 
