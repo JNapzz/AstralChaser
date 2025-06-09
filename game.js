@@ -92,9 +92,10 @@ if(victoryMsg) {
             boardDiv.appendChild(gemDiv); //Append the gem div to the board div
         }
      }
+            
 }
 
-function collapseBoard() {
+function collapseBoard() { //Function to collapse the board after matches are found
     for (let c = 0; c < BOARD_SIZE; c++) { // Loop through each column
         let pointer = BOARD_SIZE - 1; // Set a pointer to the bottom of the column
         for (let r = BOARD_SIZE - 1; r >= 0; r--) { // Loop through each row from bottom to top
@@ -115,10 +116,15 @@ function collapseBoard() {
             };
             const matches = findMatches(); //Find matches after collapsing the board
             if(matches.length > 0) { //Check if there are matches
-                pauseTimer(); //Pause the timer if there are matches
                 handleMatches(matches); //Handle the matches found
+                pauseTimer(); //Pause the timer if there are matches
+                
+            }else {
+                resumeTimer(); //Resume the timer if there are no matches
+                animating = false; //Set animating to false to allow further input
+                
             }
-        }, 300)
+        }, 300) 
 }
 
 function updateScore() {
@@ -126,7 +132,7 @@ function updateScore() {
 }
 
 //----Match  Handling -----//
-function findMatches() {
+function findMatches() { //Function to find matches in the board
     let matches = []; //Create an empty array to hold the matches
     for(let r = 0; r < BOARD_SIZE; r++) {
         for(let c = 0; c < BOARD_SIZE; c++) {
@@ -172,7 +178,7 @@ for (const m of matches) {
     return uniqueMatches; //Return the unique matches array
 };
 
-function handleMatches(matches) {
+function handleMatches(matches) { //Function to handle the matches found
     if(gameOver) {
         return; //Return if the game is over
     };
@@ -203,15 +209,15 @@ function handleMatches(matches) {
 
         setTimeout(() => {
             collapseBoard(); //Collapse the board after a delay
+            
+        setTimeout(() => {
+            attackHeroesSequentially(0); // Heroes attack, then resume timer
+                }, 350);
+            }, 300);
+        },  200); 
+    }
 
-            setTimeout(() => {
-        attackHeroesSequentially(0, resumeTimer); // Heroes attack, then resume timer
-        animating = false; 
-            }, 350);
-        }, 300);
-    }, 200);
-}
-       
+    
 
 
 //----- Input Handling -----//
