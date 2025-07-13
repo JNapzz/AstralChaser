@@ -14,6 +14,7 @@ let score = 0; //Create a variable to hold the score
 let selected = null; //Create a variable to hold the selected gem
 let animating = false; //Create a variable to check if the game is animating
 let gameOver = false;  //Create a variable to check if the game is over
+let lightfallActive = false; //Create a variable to check if the lightfall ability is active
 
 //Timer State
 const TIMER_START = 10000; //Set the timer to 10 seconds
@@ -21,6 +22,7 @@ let timeLeft = TIMER_START; //Set the time left to the timer start
 let timerInterval = null; //Create a variable to hold the timer interval
 let timerPaused = false; //Create a variable to check if the timer is paused
 let lastTick = null; //Create a variable to hold the last tick time
+let timerStarted = false; //Create a variable to check if the timer has started
 
 //DOM Elements
 const boardDiv = document.getElementById("board"); //Get the board div from the DOM
@@ -29,10 +31,42 @@ const timerDiv = document.getElementById("timer"); //Get the timer div from the 
 const resetBtn = document.getElementById("resetBtn"); //Get the reset button from the DOM
 const heroPanel = document.getElementById("heroPanel"); //Get the hero panel from the DOM
 
-//-----Board Functions-----//
-function randomGem() {
-    return Math.floor(Math.random() * COLORS.length); //Creating a random gem based on the amount of colors
+//Factions to handle Heroes and Enemy
+const faction = {
+    red: "Fire", 
+    blue: "Water",
+    green: "Earth",
+    yellow: "Light",
+    purple: "Dark"
+};
+
+function factionFire(hero) {
+    hero.attackBoost = 1.5; // Boost attack for the next attack
 }
+function waterFaction(hero) {
+    timeLeft += 1000; // Add 1 second to the timer
+}
+function earthFaction(hero, matchLength) {
+    if(matchLength > 3) {
+        hero.attackBoost = 1 + (matchLength - 3) * 0.25 // Increase attack boost based on match length
+    }
+}
+function lightFaction(her0) {
+    lightfallActive = true; // Activate lightfall ability
+}
+function darkFaction(hero) {
+    hero.mp += 10; // Restore 10 MP to the hero
+}
+
+//-----Board Functions-----//
+function randomGem(biasColor = null, biasChance = 0.1) {
+    if (biasColor && Math.random() < biasChance) {
+        const biasIndex = COLORS.findIndex(color => color.name === biasColor); //Find the index of the biased color
+        if (biasIndex !== -1) return biasIndex; //Return the index if the biased color is found
+    }
+    //If no bias or bias chance fails, return a random gem index
+    return Math.floor(Math.random() * COLORS.length); //Creating a random gem based on the amount of colors
+    }
 
 function initBoard() {
 
@@ -66,7 +100,6 @@ if(victoryMsg) {
     updateBoard(); //Update the board
     updateScore(); //Update the score
     resetTimer(); //Reset the timer
-    startTimer(); //Start the timer
     resetHeroesMp(); //Reset the heroes MP
     renderHeroes(); //Render the heroes
     renderEnemy(); //Render the enemy
@@ -106,9 +139,13 @@ function collapseBoard() { //Function to collapse the board after matches are fo
                 }
             }
             for (let r = pointer; r >= 0; r--) { // Loop through the remaining rows above the pointer
+                if (lightfallActive) {
+                    board[r][c] = randomGem("Yellow", 0.05); //If lightfall is active, fill the remaining positions with yellow gems with a bias of 5%
+                }else {
                 board[r][c] = randomGem(); //Fill the remaining positions with new random gems
             }
         }
+    }
         updateBoard(); //Update the board to reflect the changes
         setTimeout(() => {
             if(gameOver) {
@@ -117,9 +154,10 @@ function collapseBoard() { //Function to collapse the board after matches are fo
             const matches = findMatches(); //Find matches after collapsing the board
             if(matches.length > 0) { //Check if there are matches
                 handleMatches(matches); //Handle the matches found
-                pauseTimer(); //Pause the timer if there are matches
+                if (timerStarted) pauseTimer(); //Pause the timer if there are matches
                 
             }else {
+                lightfallActive = false; //Reset lightfall active state
                 resumeTimer(); //Resume the timer if there are no matches
                 animating = false; //Set animating to false to allow further input
                 
@@ -182,6 +220,11 @@ function handleMatches(matches) { //Function to handle the matches found
     if(gameOver) {
         return; //Return if the game is over
     };
+    if(!timerStarted) { //Check if the timer has not started
+        startTimer(); //Start the timer
+        timerStarted = true; //Set the timer started state to true
+
+    }
     const matchedColors = new Set(); //Create a set to hold the matched colors
     matches.forEach(({r, c}) => {
         const colorIndex = board[r][c]; //Get the color index of the matched gem
@@ -190,20 +233,51 @@ function handleMatches(matches) { //Function to handle the matches found
             matchedColors.add(colorName); //Add the color name to the matched colors set
         }
     });
+    const matchCounts = {}; //Create an object to hold the match counts for each color
+    matches.forEach(({r, c}) => {
+        const colorIndex = board[r][c]; //Get the color index of the matched gem
+        if(colorIndex !== null) {
+            const colorName = COLORS[colorIndex].name; //Get the color name from the COLORS array
+            matchCounts[colorName] = (matchCounts[colorName] || 0) + 1; //Increment the match count for the color
+        }
+    });
     matchedColors.forEach(colorName => {
         score+= 10; //Increase the score by 10 for each matched color
         const hero = heroes.find(h => h.color === colorName); //Find the hero with the matched color
+        const matchLength = matchCounts[colorName] || 0; //Get the match length for the color, default to 0 if not found
         if (hero) {
+            if (colorName === "Yellow" && lightfallActive) {
+                hero.mp = Math.min(hero.mp + 5, hero.mpMax); //Increase the hero MP by 5 if lightfall is active, but not exceeding the max MP
+            } else {
             hero.mp = Math.min(hero.mp + 10, hero.mpMax); //Increase the hero MP by 10, but not exceeding the max MP
+        }
+    }
+        switch(colorName) {
+            case "Red":
+                factionFire(hero); //Call the fire faction function for the hero
+                break;
+            case "Blue":
+                waterFaction(hero); //Call the water faction function for the hero
+                break;
+            case "Green":
+                earthFaction(hero, matchLength); //Call the earth faction function for the hero
+                break;
+            case "Yellow":
+                lightFaction(hero); //Call the light faction function for the hero
+                break;
+            case "Purple":
+                darkFaction(hero); //Call the dark faction function for the hero
+                break;
         }
     });
 
     updateBoard(matches); //Update the board with the matched positions
-
+    
     setTimeout(() => { //Set a timeout to allow the board to update before collapsing
         matches.forEach(({r, c}) => { // Loop through each matched position
             board[r][c] = null; //Set the matched positions to null
         }); 
+        
         updateScore(); //Update the score
         renderHeroes(); //Render the heroes to reflect the updated MP
 
@@ -222,6 +296,7 @@ function handleMatches(matches) { //Function to handle the matches found
 
 //----- Input Handling -----//
 function swapGems(r1, c1, r2, c2){
+    if (gameOver) return; //Return if the game is over
     animating = true; //Set animating to true to prevent further input
     const temp = board[r1][c1]; //Store the gem at the first position in a temporary variable
     board[r1][c1] = board[r2][c2]; //Swap the gems in the board array
@@ -233,7 +308,7 @@ function swapGems(r1, c1, r2, c2){
         if(matches.length === 0) {
             animating =false; 
         }else{
-            pauseTimer(); //Pause the timer if there are matches
+            if (timerStarted) pauseTimer(); //Pause the timer if there are matches
             handleMatches(matches); //Handle the matches found
         }
     }, 200); //Set a timeout to allow the board to update before checking for matches
@@ -257,11 +332,11 @@ updateBoard();
 
 // Hero Data
 const heroes = [
-{ name: "Flareblade", color: "Red", hp: 100, maxHp: 100, mp: 0, mpMax: 50, attack: 30 },
-{ name: "Aquaria", color: "Blue", hp: 90, maxHp: 90, mp: 0, mpMax: 50, attack: 25 },
-{ name: "Verdant", color: "Green", hp: 110, maxHp: 110, mp: 0, mpMax: 50, attack: 35 },
-{ name: "Stormcaller", color: "Yellow", hp: 95, maxHp: 95, mp: 0, mpMax: 50, attack: 28 },
-{ name: "Shadowstrike", color: "Purple", hp: 85, maxHp: 85, mp: 0, mpMax: 50, attack: 20 }
+{ name: "Flareblade", color: "Red", hp: 100, maxHp: 100, mp: 0, mpMax: 50, attack: 30, attackBoost: 1},
+{ name: "Aquaria", color: "Blue", hp: 90, maxHp: 90, mp: 0, mpMax: 50, attack: 25, attackBoost: 1 },
+{ name: "Verdant", color: "Green", hp: 110, maxHp: 110, mp: 0, mpMax: 50, attack: 35, attackBoost: 1 },
+{ name: "Stormcaller", color: "Yellow", hp: 95, maxHp: 95, mp: 0, mpMax: 50, attack: 28, attackBoost: 1 },
+{ name: "Shadowstrike", color: "Purple", hp: 85, maxHp: 85, mp: 0, mpMax: 50, attack: 20, attackBoost: 1 }
 ];
 
 //Hero Logic
@@ -306,31 +381,7 @@ function renderHeroes() {
         renderHeroes(); //Call the renderHeroes function to render the heroes
         };
 
-        // Sequential Attack Logic
-        function attackHeroesSequentially(index = 0, callback) {
-            if(gameOver) {
-                return; //Return if the game is over
-            };
-            if (index >= heroes.length) { //Check if the index is greater than or equal to the length of the heroes array
-                if (callback) callback(); //Call the callback function if provided
-                return; //Return if all heroes have attacked
-            }
-            const hero = heroes[index]; //Get the hero at the current index
-            if (hero.mp >= hero.mpMax && enemy.hp > 0) { //Check if the hero MP is greater than or equal to the hero MP max and the enemy HP is greater than 0
-                hero.mp = 0; //Reset the hero MP to 0
-                renderHeroes(); //Call the renderHeroes function to render the heroes
-                dealDamageToEnemy(hero.attack, hero.name); //Call the dealDamageToEnemy function to deal damage to the enemy
-                setTimeout(() => {
-                    if (enemy.hp > 0) {
-                        attackHeroesSequentially(index + 1, callback); //Call the attackHeroesSequentially function with the next index
-                    }else{
-                        if (callback) callback(); 
-                    }
-                }, 400); //Set a timeout to allow the enemy to take damage before the next hero attacks 
-            } else {
-                attackHeroesSequentially(index + 1, callback); //Call the attackHeroesSequentially function with the next index if the hero MP is less than the hero MP max
-            }
-        };
+       
         
 
  // ------ Enemy Logic -----//
@@ -355,9 +406,17 @@ function renderHeroes() {
  };
 
  function dealDamageToEnemy(damage, attackerName) { //Function to deal damage to the enemy
+    const hero  =heroes.find(h => h.name === attackerName); //Find the hero who is attacking
+    let finalDamage = damage; //Set the final damage to the damage amount
+    if (hero && hero.attackBoost) { //Check if the hero exists and has an attack boost
+        finalDamage = Math.round(damage * hero.attackBoost); //Calculate the final damage based on the hero attack boost
+        hero.attackBoost = 1;
+    }
+    enemy.hp = Math.max(0, enemy.hp - finalDamage); //Reduce the enemy HP by the final damage amount, ensuring it doesn't go below 0
     const logDiv = document.createElement("div"); //Create a new div for the log
     logDiv.className = "damage-log"; //Set the class name to damage-log
-    logDiv.textContent = `${attackerName} hits ${enemy.name} for ${damage}!`; //Set the text content of the log div to the attack message
+    logDiv.textContent = `${attackerName} hits ${enemy.name} for ${finalDamage}!`; //Set the text content of the log div to the attack message
+    console.log(`${hero.name} attacks ${enemy.name} for ${finalDamage} damage!`); 
     document.body.appendChild(logDiv); //Append the log div to the body
 
     setTimeout(() => logDiv.remove(), 1500); //Set a timeout to remove the log div after 1.5 seconds
@@ -370,6 +429,31 @@ function renderHeroes() {
         flashEnemyPanel(); //Call the flashEnemyPanel function to flash the enemy panel
     }
  };
+  // Sequential Attack Logic
+        function attackHeroesSequentially(index = 0, callback) {
+            if(gameOver) {
+                return; //Return if the game is over
+            };
+            if (index >= heroes.length) { //Check if the index is greater than or equal to the length of the heroes array
+                if (callback) callback(); //Call the callback function if provided
+                return; //Return if all heroes have attacked
+            }
+            const hero = heroes[index]; //Get the hero at the current index
+            if (hero.mp >= hero.mpMax && enemy.hp > 0) { //Check if the hero MP is greater than or equal to the hero MP max and the enemy HP is greater than 0
+                hero.mp = 0; //Reset the hero MP to 0
+                renderHeroes(); //Call the renderHeroes function to render the heroes
+                dealDamageToEnemy(hero.attack, hero.name); //Call the dealDamageToEnemy function to deal damage to the enemy
+                setTimeout(() => {
+                    if (enemy.hp > 0) {
+                        attackHeroesSequentially(index + 1, callback); //Call the attackHeroesSequentially function with the next index
+                    }else{
+                        if (callback) callback(); 
+                    }
+                }, 400); //Set a timeout to allow the enemy to take damage before the next hero attacks 
+            } else {
+                attackHeroesSequentially(index + 1, callback); //Call the attackHeroesSequentially function with the next index if the hero MP is less than the hero MP max
+            }
+        };
 
  function handleEnemyDefeat() {
     const winDiv = document.createElement("div"); //Create a new div for the win message
@@ -437,26 +521,26 @@ function stopTimer() { //Function to stop the timer
 };
 
 function pauseTimer() {
-    if(!timerPaused &&!gameOver) { //Check if the timer is not paused and the game is not over
-        timerPaused = true; //Set the timer paused state to true
-        const now = Date.now(); 
-        timeLeft -= Math.max(0, now - lastTick); //Subtract the time since the last tick from the time left
-        updateTimerDisplay();
-    }
-};
+    if (!timerStarted || timerPaused || gameOver || lastTick === null) return;
+    timerPaused = true;
+    const now = Date.now();
+    timeLeft -= Math.max(0, now - lastTick);
+    updateTimerDisplay();
+}
 
 function resumeTimer() {
-    if (timerPaused && !gameOver) {
-        timerPaused = false; 
-        lastTick = Date.now();
-    }
-};
+    if (!timerStarted || !timerPaused || gameOver) return;
+    timerPaused = false;
+    lastTick = Date.now();
+}
 
 function resetTimer() {
     stopTimer(); 
     timeLeft = TIMER_START; 
     timerPaused = false; 
     gameOver = false;
+    lastTick = null;
+    timerStarted = false;  
     updateTimerDisplay(); 
 };
 
